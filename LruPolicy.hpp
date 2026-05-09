@@ -33,7 +33,7 @@ class LruNode
 template<typename Key, typename Value>
 class TLruCache
 {
-public:
+public: : public BasePolicy<Key, Value>
     using LruNodeType = LruNode<Key, Value>;
     using NodePtr = std::shared_ptr<LruNodeType>;
     using NodeMap = std::unordered_map<Key, NodePtr>;
@@ -44,10 +44,10 @@ public:
         initializeList();
     }
 
-    ~TLruCache() = default;
+    ~TLruCache() override = default;
 
     // 添加缓存
-    void put(Key key, Value value) 
+    void put(Key key, Value value) override
     {
         if (capacity_ <= 0)
             return;
@@ -64,7 +64,7 @@ public:
         addNewNode(key, value);
     }
 
-    bool get(Key key, Value& value) 
+    bool get(Key key, Value& value) override 
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = nodeMap_.find(key);
@@ -77,7 +77,7 @@ public:
         return false;
     }
 
-    Value get(Key key) 
+    Value get(Key key) override
     {
         Value value{};
         // memset(&value, 0, sizeof(value));   // memset 是按字节设置内存的，对于复杂类型（如 string）使用 memset 可能会破坏对象的内部结构
@@ -86,7 +86,7 @@ public:
     }
 
     // 删除指定元素
-    void remove(Key key) 
+    void remove(Key key) override
     {   
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = nodeMap_.find(key);
