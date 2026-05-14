@@ -22,13 +22,56 @@ namespace TXCache
     class TXLruCache : public TXCachePolicy<Key, Value>
     {
     public:
-        TXLruCache()
-            :
+        TXLruCache(int capacity)
+            : capacity_(capacity)
         {
             LruNode* head_;
             LruNode* tail_;
             head_->next = tail_;
             tail_->prev = head_;
+        }
+
+        ~TXLruCache() override = default;
+
+        bool get(Key key, Value& value) override
+        {
+            auto it = nodemap_.find(key);
+
+            if(it != nodemap_.end()){
+                moveToHead(it->second);
+                value = it->second->value_;
+                return true;
+            }
+
+            return false;
+        }
+
+        Value get(Key key) override
+        {
+            Value value{};
+            get(key, value);
+            return value;
+        }
+
+        void put(Key key, Value value) override
+        {
+            auto it = nodemap_.find(key);
+
+            if(it != nodemap_.end()){
+                it->second->value_ = value;
+                moveToHead(it->second);
+                return;
+            }
+
+            LruNode* newnode = new LruNode(key, value);
+            nodemap_[key] = newnode;
+            addToHead(newnode);
+
+            if(nodemap_.size() > capacity_){
+                LruNode* tailnode = popTail();
+                nodemap_.erase(tailnode->key_);
+                delete tailnode;
+            }
         }
         
 
@@ -53,7 +96,7 @@ namespace TXCache
             addtoHead(node);
         };
 
-        LruNode* removeTail()
+        LruNode* popTail()
         {
             LruNode* node = tail_->prev_;
             removeNode(node);
@@ -61,9 +104,9 @@ namespace TXCache
         };
 
     private:
+        int capacity_;
         LruNode* head_;
         LruNode* tail_;
-
-        srd::unordered<Key, LruNode*> nodemap_;
+        std::unordered<Key, LruNode*> nodemap_;
     };
 } 
